@@ -120,7 +120,6 @@ const eliminarMembresia = async (req, res) => {
 };
 
 module.exports = {
-  crearMembresia,
   obtenerMembresias,
   obtenerMembresiaPorId,
   buscarPorNombre,

@@ -119,13 +119,13 @@ const dashboard = async (req, res) => {
     const ingresosHoy = await pool.query(`
       SELECT COALESCE(SUM(total),0) AS ingresos_hoy
       FROM ventas
-      WHERE DATE(creado_en) = CURRENT_DATE
+      WHERE DATE(fecha) = CURRENT_DATE
     `);
 
     const ventasHoy = await pool.query(`
       SELECT COUNT(*) AS ventas_hoy
       FROM ventas
-      WHERE DATE(creado_en) = CURRENT_DATE
+      WHERE DATE(fecha) = CURRENT_DATE
     `);
 
     const membresiasActivas = await pool.query(`

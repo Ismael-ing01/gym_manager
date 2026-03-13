@@ -71,7 +71,6 @@ const eliminarTipoMembresia = async (req, res) => {
     const { id } = req.params;
 
     await pool.query("DELETE FROM tipos_membresia WHERE id=$1", [id]);
-
     res.json({ message: "Tipo de membresía eliminado" });
   } catch (error) {
     res.status(500).json({ error: error.message });
