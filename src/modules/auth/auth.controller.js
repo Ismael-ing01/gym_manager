@@ -2,17 +2,17 @@ const pool = require("../../config/database");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
-const registerAdmin = async (req, res) => {
+const register = async (req, res) => {
   try {
-    const { nombre, email, password } = req.body;
+    const { nombre, email, password, rol } = req.body;
 
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
       `INSERT INTO usuarios (nombre, email, password, rol)
-             VALUES ($1, $2, $3, 'ENTRENADOR')
+             VALUES ($1, $2, $3, $4)
              RETURNING id, nombre, email, rol`,
-      [nombre, email, hashedPassword],
+      [nombre, email, hashedPassword, rol],
     );
 
     res.status(201).json(result.rows[0]);

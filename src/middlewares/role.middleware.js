@@ -1,13 +1,10 @@
-const checkRole = (...rolesPermitidos) => {
+const checkRole = (rolesPermitidos) => {
   return (req, res, next) => {
-    const user = req.user;
-
-    if (!rolesPermitidos.includes(user.rol)) {
+    if (!rolesPermitidos.includes(req.user.rol)) {
       return res.status(403).json({
         message: "No tienes permisos para esta acción",
       });
     }
-
     next();
   };
 };
