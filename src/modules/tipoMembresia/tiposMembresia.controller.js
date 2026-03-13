@@ -4,6 +4,10 @@ const crearTipoMembresia = async (req, res) => {
   try {
     const { nombre, duracion_dias, precio, descripcion } = req.body;
 
+    if (!nombre || !duracion_dias || !precio) {
+      return res.status(400).json({ message: "nombre, duracion_dias y precio son requeridos y no pueden ser 0" });
+    }
+
     const result = await pool.query(
       `INSERT INTO tipos_membresia
        (nombre, duracion_dias, precio, descripcion)
@@ -38,6 +42,10 @@ const actualizarTipoMembresia = async (req, res) => {
     const { id } = req.params;
     const { nombre, duracion_dias, precio, descripcion } = req.body;
 
+    if (!nombre || !duracion_dias || !precio) {
+      return res.status(400).json({ message: "nombre, duracion_dias y precio son requeridos y no pueden ser 0" });
+    }
+
     const result = await pool.query(
       `UPDATE tipos_membresia
        SET nombre=$1,
@@ -59,13 +67,15 @@ const actualizarTipoMembresia = async (req, res) => {
 };
 
 const eliminarTipoMembresia = async (req, res) => {
-  const { id } = req.params;
+  try {
+    const { id } = req.params;
 
-  await pool.query("DELETE FROM tipos_membresia WHERE id=$1", [id]);
+    await pool.query("DELETE FROM tipos_membresia WHERE id=$1", [id]);
 
-  res.json({
-    message: "Tipo de membresía eliminado",
-  });
+    res.json({ message: "Tipo de membresía eliminado" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 };
 
 module.exports = {

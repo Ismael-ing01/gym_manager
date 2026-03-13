@@ -4,6 +4,10 @@ const crearCliente = async (req, res) => {
   try {
     const { nombre, cedula, telefono, email } = req.body;
 
+    if (!nombre || !cedula) {
+      return res.status(400).json({ message: "nombre y cedula son requeridos" });
+    }
+
     const result = await pool.query(
       `INSERT INTO clientes (nombre, cedula, telefono, email)
              VALUES ($1, $2, $3, $4)
@@ -33,6 +37,10 @@ const actualizarCliente = async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, cedula, telefono, email } = req.body;
+
+    if (!nombre || !cedula) {
+      return res.status(400).json({ message: "nombre y cedula son requeridos" });
+    }
 
     const result = await pool.query(
       `UPDATE clientes

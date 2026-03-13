@@ -1,19 +1,16 @@
 const express = require("express");
 const router = express.Router();
-const verifyToken = require("../../middlewares/authMiddleware");
-const checkRole = require("../../middlewares/checkRole");
+const verifyToken = require("../../middlewares/auth.middleware");
+const checkRole = require("../../middlewares/role.middleware");
 const roles = require("../../utils/roles");
 
 const {
-  crearMembresia,
   obtenerMembresias,
   obtenerMembresiaPorId,
   buscarPorNombre,
   actualizarMembresia,
   eliminarMembresia,
 } = require("./membresias.controller");
-
-router.post("/", verifyToken, checkRole([roles.ADMIN]), crearMembresia);
 
 router.get(
   "/",

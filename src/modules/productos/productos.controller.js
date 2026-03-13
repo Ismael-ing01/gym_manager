@@ -4,6 +4,10 @@ const crearProducto = async (req, res) => {
   try {
     const { nombre, precio_compra, precio_venta, stock } = req.body;
 
+    if (!nombre || !precio_compra || !precio_venta || !stock) {
+      return res.status(400).json({ message: "nombre, precio_compra, precio_venta y stock son requeridos y no pueden ser 0" });
+    }
+
     const result = await pool.query(
       `INSERT INTO productos (nombre, precio_compra, precio_venta, stock)
        VALUES ($1,$2,$3,$4)
@@ -48,6 +52,10 @@ const actualizarProducto = async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, precio_compra, precio_venta, stock } = req.body;
+
+    if (!nombre || !precio_compra || !precio_venta || !stock) {
+      return res.status(400).json({ message: "nombre, precio_compra, precio_venta y stock son requeridos y no pueden ser 0" });
+    }
 
     const result = await pool.query(
       `UPDATE productos

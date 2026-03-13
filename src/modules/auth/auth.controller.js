@@ -6,6 +6,12 @@ const register = async (req, res) => {
   try {
     const { nombre, email, password, rol } = req.body;
 
+    if (!nombre || !email || !password || !rol) {
+      return res
+        .status(400)
+        .json({ message: "nombre, email, password y rol son requeridos" });
+    }
+
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const result = await pool.query(
@@ -66,7 +72,7 @@ const obtenerRegistros = async (req, res) => {
 };
 
 module.exports = {
-  registerAdmin,
+  register,
   login,
   obtenerRegistros,
 };

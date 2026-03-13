@@ -1,47 +1,5 @@
 const pool = require("../../config/database");
 
-// CREAR MEMBRESIA
-const crearMembresia = async (req, res) => {
-  try {
-    const { cliente_id, tipo_membresia_id, fecha_inicio, metodo_pago } =
-      req.body;
-
-    // obtener duración del plan
-    const tipo = await pool.query(
-      "SELECT duracion_dias FROM tipos_membresia WHERE id=$1",
-      [tipo_membresia_id],
-    );
-
-    if (tipo.rows.length === 0) {
-      return res
-        .status(404)
-        .json({ message: "Tipo de membresía no encontrado" });
-    }
-
-    const duracion = tipo.rows[0].duracion_dias;
-
-    // calcular fecha fin
-    const fechaFin = await pool.query(
-      `SELECT $1::date + $2 * INTERVAL '1 day' AS fecha_fin`,
-      [fecha_inicio, duracion],
-    );
-
-    const fecha_fin = fechaFin.rows[0].fecha_fin;
-
-    const result = await pool.query(
-      `INSERT INTO membresias
-       (cliente_id, tipo_membresia_id, fecha_inicio, fecha_fin, metodo_pago)
-       VALUES ($1,$2,$3,$4,$5)
-       RETURNING *`,
-      [cliente_id, tipo_membresia_id, fecha_inicio, fecha_fin, metodo_pago],
-    );
-
-    res.status(201).json(result.rows[0]);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
-
 // VER TODAS LAS MEMBRESIAS
 const obtenerMembresias = async (req, res) => {
   try {
@@ -52,7 +10,7 @@ const obtenerMembresias = async (req, res) => {
       t.nombre AS plan,
       m.fecha_inicio,
       m.fecha_fin,
-      m.metodo_pago,
+      m.estado,
       (m.fecha_fin - CURRENT_DATE) AS dias_restantes
       FROM membresias m
       JOIN clientes c ON c.id = m.cliente_id
@@ -119,37 +77,29 @@ const buscarPorNombre = async (req, res) => {
   }
 };
 
-// ACTUALIZAR MEMBRESIA
+// ACTUALIZAR ESTADO DE MEMBRESIA (activa / inactiva)
 const actualizarMembresia = async (req, res) => {
   const { id } = req.params;
-  const { cliente_id, tipo_membresia_id, fecha_inicio, metodo_pago } = req.body;
+  const { estado } = req.body;
 
   try {
-    const tipo = await pool.query(
-      "SELECT duracion_dias FROM tipos_membresia WHERE id=$1",
-      [tipo_membresia_id],
-    );
-
-    const duracion = tipo.rows[0].duracion_dias;
-
-    const fechaFin = await pool.query(
-      `SELECT $1::date + $2 * INTERVAL '1 day' AS fecha_fin`,
-      [fecha_inicio, duracion],
-    );
-
-    const fecha_fin = fechaFin.rows[0].fecha_fin;
+    if (!estado) {
+      return res
+        .status(400)
+        .json({ message: "estado es requerido (activa / inactiva)" });
+    }
 
     const result = await pool.query(
       `UPDATE membresias
-       SET cliente_id=$1,
-           tipo_membresia_id=$2,
-           fecha_inicio=$3,
-           fecha_fin=$4,
-           metodo_pago=$5
-       WHERE id=$6
+       SET estado=$1
+       WHERE id=$2
        RETURNING *`,
-      [cliente_id, tipo_membresia_id, fecha_inicio, fecha_fin, metodo_pago, id],
+      [estado, id],
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Membresía no encontrada" });
+    }
 
     res.json(result.rows[0]);
   } catch (error) {

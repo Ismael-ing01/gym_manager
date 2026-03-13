@@ -5,6 +5,10 @@ const crearEgreso = async (req, res) => {
   try {
     const { descripcion, monto, metodo_pago_id, categoria } = req.body;
 
+    if (!descripcion || !monto || !metodo_pago_id) {
+      return res.status(400).json({ message: "descripcion, monto y metodo_pago_id son requeridos y no pueden ser 0" });
+    }
+
     const result = await pool.query(
       `INSERT INTO egresos (descripcion,monto,metodo_pago_id,categoria)
        VALUES ($1,$2,$3,$4)
@@ -52,6 +56,10 @@ const actualizarEgreso = async (req, res) => {
   try {
     const { id } = req.params;
     const { descripcion, monto, metodo_pago_id, categoria } = req.body;
+
+    if (!descripcion || !monto || !metodo_pago_id) {
+      return res.status(400).json({ message: "descripcion, monto y metodo_pago_id son requeridos y no pueden ser 0" });
+    }
 
     const result = await pool.query(
       `UPDATE egresos

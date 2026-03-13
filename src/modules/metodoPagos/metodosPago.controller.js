@@ -5,6 +5,9 @@ const crearMetodoPago = async (req, res) => {
   const { nombre, descripcion } = req.body;
 
   try {
+    if (!nombre) {
+      return res.status(400).json({ message: "nombre es requerido" });
+    }
     const result = await pool.query(
       "INSERT INTO metodos_pago (nombre, descripcion) VALUES ($1, $2) RETURNING *",
       [nombre, descripcion],
@@ -49,6 +52,9 @@ const actualizarMetodoPago = async (req, res) => {
   const { nombre, descripcion } = req.body;
 
   try {
+    if (!nombre) {
+      return res.status(400).json({ message: "nombre es requerido" });
+    }
     const result = await pool.query(
       "UPDATE metodos_pago SET nombre=$1, descripcion=$2 WHERE id=$3 RETURNING *",
       [nombre, descripcion, id],

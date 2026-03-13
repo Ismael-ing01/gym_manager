@@ -4,6 +4,10 @@ const registrarEntradaDia = async (req, res) => {
   try {
     const { metodo_pago_id, total, descripcion } = req.body;
 
+    if (!metodo_pago_id || !total) {
+      return res.status(400).json({ message: "metodo_pago_id y total son requeridos y no pueden ser 0" });
+    }
+
     const result = await pool.query(
       `INSERT INTO ventas (metodo_pago_id, tipo_venta, total, descripcion)
        VALUES ($1,'entrada_dia',$2,$3)
@@ -22,6 +26,10 @@ const venderProducto = async (req, res) => {
 
   try {
     const { metodo_pago_id, productos } = req.body;
+
+    if (!metodo_pago_id || !productos || !Array.isArray(productos) || productos.length === 0) {
+      return res.status(400).json({ message: "metodo_pago_id y productos (array no vacío) son requeridos" });
+    }
 
     /*
     productos = [
@@ -45,7 +53,7 @@ const venderProducto = async (req, res) => {
 
     for (const item of productos) {
       const producto = await client.query(
-        "SELECT precio, stock FROM productos WHERE id=$1",
+        "SELECT precio_venta, stock FROM productos WHERE id=$1",
         [item.producto_id],
       );
 
@@ -110,6 +118,10 @@ const venderMembresia = async (req, res) => {
 
   try {
     const { cliente_id, tipo_membresia_id, metodo_pago_id } = req.body;
+
+    if (!cliente_id || !tipo_membresia_id || !metodo_pago_id) {
+      return res.status(400).json({ message: "cliente_id, tipo_membresia_id y metodo_pago_id son requeridos" });
+    }
 
     await client.query("BEGIN");
 
