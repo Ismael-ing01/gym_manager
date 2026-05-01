@@ -8,7 +8,15 @@ const {
   registrarEntradaDia,
   venderProducto,
   venderMembresia,
+  obtenerVentasHoy,
 } = require("./ventas.controller");
+
+router.get(
+  "/hoy",
+  verifyToken,
+  checkRole([roles.ADMIN, roles.ENTRENADOR]),
+  obtenerVentasHoy,
+);
 
 router.post(
   "/entrada_dia",

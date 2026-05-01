@@ -51,9 +51,29 @@ const crearProducto = async (req, res) => {
 
 const obtenerProductos = async (req, res) => {
   try {
-    const result = await pool.query("SELECT * FROM productos ORDER BY id DESC");
+    if (req.query.page) {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
 
-    res.json(result.rows);
+      const countResult = await pool.query('SELECT COUNT(*) FROM productos');
+      const total = parseInt(countResult.rows[0].count);
+
+      const result = await pool.query(
+        `SELECT * FROM productos ORDER BY id DESC LIMIT $1 OFFSET $2`,
+        [limit, offset]
+      );
+
+      return res.json({
+        data: result.rows,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      });
+    } else {
+      const result = await pool.query("SELECT * FROM productos ORDER BY id DESC");
+      return res.json(result.rows);
+    }
   } catch (error) {
     res.status(500).json({ error: "Error interno del servidor" });
   }

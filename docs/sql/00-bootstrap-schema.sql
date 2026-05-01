@@ -177,8 +177,7 @@ ALTER TABLE public.usuarios
 ADD CONSTRAINT usuarios_rol_valid CHECK (
     rol IN (
         'ADMIN',
-        'ENTRENADOR',
-        'EMPLEADO'
+        'ENTRENADOR'
     )
 );
 

@@ -45,14 +45,37 @@ const crearEgreso = async (req, res) => {
 // Obtener todos los egresos
 const obtenerEgresos = async (req, res) => {
   try {
-    const result = await pool.query(
-      `SELECT e.*, m.nombre as metodo_pago
-       FROM egresos e
-       LEFT JOIN metodos_pago m ON e.metodo_pago_id = m.id
-       ORDER BY fecha DESC`,
-    );
+    if (req.query.page) {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
 
-    res.json(result.rows);
+      const countResult = await pool.query('SELECT COUNT(*) FROM egresos');
+      const total = parseInt(countResult.rows[0].count);
+
+      const result = await pool.query(`
+        SELECT e.*, m.nombre as metodo_pago
+        FROM egresos e
+        LEFT JOIN metodos_pago m ON e.metodo_pago_id = m.id
+        ORDER BY fecha DESC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+
+      return res.json({
+        data: result.rows,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      });
+    } else {
+      const result = await pool.query(`
+        SELECT e.*, m.nombre as metodo_pago
+        FROM egresos e
+        LEFT JOIN metodos_pago m ON e.metodo_pago_id = m.id
+        ORDER BY fecha DESC
+      `);
+      return res.json(result.rows);
+    }
   } catch (error) {
     res.status(500).json({ error: "Error interno del servidor" });
   }

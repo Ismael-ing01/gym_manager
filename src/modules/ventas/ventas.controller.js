@@ -263,8 +263,76 @@ const venderMembresia = async (req, res) => {
   }
 };
 
+const obtenerVentasHoy = async (req, res) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+
+    const countResult = await pool.query('SELECT COUNT(*) FROM ventas WHERE DATE(fecha) = CURRENT_DATE');
+    const total = parseInt(countResult.rows[0].count);
+
+    const result = await pool.query(`
+      SELECT 
+        v.id,
+        v.tipo_venta,
+        v.total,
+        v.descripcion,
+        v.fecha,
+        m.nombre AS metodo_pago,
+        c.nombre AS cliente
+      FROM ventas v
+      LEFT JOIN metodos_pago m ON m.id = v.metodo_pago_id
+      LEFT JOIN clientes c ON c.id = v.cliente_id
+      WHERE DATE(v.fecha) = CURRENT_DATE
+      ORDER BY v.id DESC
+      LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    const ventas = result.rows;
+
+    for (let venta of ventas) {
+      if (venta.tipo_venta === 'producto') {
+        const detalles = await pool.query(`
+          SELECT p.nombre, dv.cantidad
+          FROM detalle_ventas dv
+          JOIN productos p ON p.id = dv.producto_id
+          WHERE dv.venta_id = $1
+        `, [venta.id]);
+        
+        venta.detalles = detalles.rows.map(d => d.nombre).join(', ');
+        venta.cantidad = detalles.rows.map(d => d.cantidad).join(', ');
+      } else if (venta.tipo_venta === 'membresia') {
+        const mem = await pool.query(`
+          SELECT tm.nombre 
+          FROM membresias mem
+          JOIN tipos_membresia tm ON tm.id = mem.tipo_membresia_id
+          WHERE mem.venta_id = $1
+        `, [venta.id]);
+        if (mem.rows.length > 0) {
+          venta.detalles = mem.rows[0].nombre;
+        }
+        venta.cantidad = '1';
+      } else if (venta.tipo_venta === 'entrada_dia') {
+        venta.detalles = venta.descripcion || 'Pase de día';
+        venta.cantidad = '1';
+      }
+    }
+
+    res.json({
+      data: ventas,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    });
+  } catch (error) {
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
 module.exports = {
   registrarEntradaDia,
   venderProducto,
   venderMembresia,
+  obtenerVentasHoy,
 };

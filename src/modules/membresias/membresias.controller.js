@@ -3,22 +3,53 @@ const pool = require("../../config/database");
 // VER TODAS LAS MEMBRESIAS
 const obtenerMembresias = async (req, res) => {
   try {
-    const result = await pool.query(`
-      SELECT 
-      m.id,
-      c.nombre AS cliente,
-      t.nombre AS plan,
-      m.fecha_inicio,
-      m.fecha_fin,
-      m.estado,
-      (m.fecha_fin - CURRENT_DATE) AS dias_restantes
-      FROM membresias m
-      JOIN clientes c ON c.id = m.cliente_id
-      JOIN tipos_membresia t ON t.id = m.tipo_membresia_id
-      ORDER BY m.id DESC
-    `);
+    if (req.query.page) {
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const offset = (page - 1) * limit;
 
-    res.json(result.rows);
+      const countResult = await pool.query('SELECT COUNT(*) FROM membresias');
+      const total = parseInt(countResult.rows[0].count);
+
+      const result = await pool.query(`
+        SELECT 
+        m.id,
+        c.nombre AS cliente,
+        t.nombre AS plan,
+        m.fecha_inicio,
+        m.fecha_fin,
+        m.estado,
+        (m.fecha_fin - CURRENT_DATE) AS dias_restantes
+        FROM membresias m
+        JOIN clientes c ON c.id = m.cliente_id
+        JOIN tipos_membresia t ON t.id = m.tipo_membresia_id
+        ORDER BY m.id DESC
+        LIMIT $1 OFFSET $2
+      `, [limit, offset]);
+
+      return res.json({
+        data: result.rows,
+        total,
+        page,
+        totalPages: Math.ceil(total / limit)
+      });
+    } else {
+      const result = await pool.query(`
+        SELECT 
+        m.id,
+        c.nombre AS cliente,
+        t.nombre AS plan,
+        m.fecha_inicio,
+        m.fecha_fin,
+        m.estado,
+        (m.fecha_fin - CURRENT_DATE) AS dias_restantes
+        FROM membresias m
+        JOIN clientes c ON c.id = m.cliente_id
+        JOIN tipos_membresia t ON t.id = m.tipo_membresia_id
+        ORDER BY m.id DESC
+      `);
+      return res.json(result.rows);
+    }
   } catch (error) {
     res.status(500).json({ error: "Error interno del servidor" });
   }

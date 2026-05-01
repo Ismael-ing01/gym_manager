@@ -131,7 +131,7 @@ const dashboard = async (req, res) => {
     const membresiasActivas = await pool.query(`
       SELECT COUNT(*) AS membresias_activas
       FROM membresias
-      WHERE fecha_fin >= CURRENT_DATE
+      WHERE fecha_fin >= CURRENT_DATE AND estado = 'activa'
     `);
 
     const stockBajo = await pool.query(`
