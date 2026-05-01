@@ -1,0 +1,40 @@
+{
+  "database": "gym_manager",
+  "ranAt": "2026-03-25T05:54:10.037Z",
+  "steps": [
+    {
+      "file": "docs/sql/00-bootstrap-schema.sql",
+      "ok": true
+    },
+    {
+      "file": "docs/sql/security-hardening.sql",
+      "ok": true
+    }
+  ],
+  "ok": true,
+  "tables": [
+    "clientes",
+    "detalle_ventas",
+    "egresos",
+    "membresias",
+    "metodos_pago",
+    "productos",
+    "tipos_membresia",
+    "usuarios",
+    "ventas"
+  ],
+  "constraints": [
+    "detalle_ventas_cantidad_positive",
+    "egresos_monto_positive",
+    "membresias_estado_valid",
+    "productos_precio_compra_positive",
+    "productos_precio_venta_positive",
+    "productos_stock_non_negative",
+    "tipos_membresia_duracion_positive",
+    "tipos_membresia_precio_positive",
+    "usuarios_email_unique",
+    "usuarios_rol_valid",
+    "ventas_tipo_valid",
+    "ventas_total_positive"
+  ]
+}

@@ -11,23 +11,23 @@ const {
   eliminarTipoMembresia,
 } = require("./tiposMembresia.controller");
 
-router.post("/", verifyToken, checkRole(roles.ADMIN), crearTipoMembresia);
+router.post("/", verifyToken, checkRole([roles.ADMIN]), crearTipoMembresia);
 router.get(
   "/",
   verifyToken,
-  checkRole(roles.ADMIN, roles.ENTRENADOR),
+  checkRole([roles.ADMIN, roles.ENTRENADOR]),
   obtenerTiposMembresia,
 );
 router.put(
   "/:id",
   verifyToken,
-  checkRole(roles.ADMIN),
+  checkRole([roles.ADMIN]),
   actualizarTipoMembresia,
 );
 router.delete(
   "/:id",
   verifyToken,
-  checkRole(roles.ADMIN),
+  checkRole([roles.ADMIN]),
   eliminarTipoMembresia,
 );
 

@@ -17,7 +17,7 @@ const crearCliente = async (req, res) => {
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -29,7 +29,25 @@ const obtenerClientes = async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
+  }
+};
+
+const obtenerClientePorId = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      "SELECT * FROM clientes WHERE id = $1 AND estado = true",
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Cliente no encontrado" });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -50,9 +68,13 @@ const actualizarCliente = async (req, res) => {
       [nombre, cedula, telefono, email, id],
     );
 
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Cliente no encontrado" });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -60,17 +82,25 @@ const desactivarCliente = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await pool.query(`UPDATE clientes SET estado=false WHERE id=$1`, [id]);
+    const result = await pool.query(
+      `UPDATE clientes SET estado=false WHERE id=$1 RETURNING id`,
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Cliente no encontrado" });
+    }
 
     res.json({ message: "Cliente desactivado" });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
 module.exports = {
   crearCliente,
   obtenerClientes,
+  obtenerClientePorId,
   actualizarCliente,
   desactivarCliente,
 };

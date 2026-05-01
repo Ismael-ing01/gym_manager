@@ -47,7 +47,7 @@ router.get(
 router.get(
   "/dashboard",
   verifyToken,
-  checkRole([roles.ADMIN, roles.EMPLEADO]),
+  checkRole([roles.ADMIN, roles.ENTRENADOR]),
   dashboard,
 );
 

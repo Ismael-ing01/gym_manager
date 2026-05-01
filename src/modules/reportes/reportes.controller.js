@@ -11,7 +11,7 @@ const ingresosHoy = async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -26,7 +26,7 @@ const egresosHoy = async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -42,7 +42,7 @@ const gananciaHoy = async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -57,7 +57,7 @@ const ingresosMes = async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -74,7 +74,7 @@ const productosMasVendidos = async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -94,7 +94,7 @@ const membresiasVencidas = async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -109,7 +109,7 @@ const productosStockBajo = async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -147,7 +147,7 @@ const dashboard = async (req, res) => {
       productos_stock_bajo: stockBajo.rows[0].productos_stock_bajo,
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 

@@ -7,6 +7,7 @@ const roles = require("../../utils/roles");
 const {
   crearCliente,
   obtenerClientes,
+  obtenerClientePorId,
   actualizarCliente,
   desactivarCliente,
 } = require("./clientes.controller");
@@ -14,19 +15,26 @@ const {
 router.post(
   "/",
   verifyToken,
-  checkRole(roles.ADMIN, roles.ENTRENADOR),
+  checkRole([roles.ADMIN, roles.ENTRENADOR]),
   crearCliente,
 );
 
 router.get(
   "/",
   verifyToken,
-  checkRole(roles.ADMIN, roles.ENTRENADOR),
+  checkRole([roles.ADMIN, roles.ENTRENADOR]),
   obtenerClientes,
 );
 
-router.put("/:id", verifyToken, checkRole(roles.ADMIN), actualizarCliente);
+router.get(
+  "/:id",
+  verifyToken,
+  checkRole([roles.ADMIN, roles.ENTRENADOR]),
+  obtenerClientePorId,
+);
 
-router.delete("/:id", verifyToken, checkRole(roles.ADMIN), desactivarCliente);
+router.put("/:id", verifyToken, checkRole([roles.ADMIN]), actualizarCliente);
+
+router.delete("/:id", verifyToken, checkRole([roles.ADMIN]), desactivarCliente);
 
 module.exports = router;

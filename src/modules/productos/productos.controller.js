@@ -1,18 +1,43 @@
 const pool = require("../../config/database");
 
+const validarDatosProducto = ({ nombre, precio_compra, precio_venta, stock }) => {
+  if (!nombre || !nombre.trim()) {
+    return "nombre es requerido";
+  }
+
+  const compra = Number(precio_compra);
+  const venta = Number(precio_venta);
+  const inventario = Number(stock);
+
+  if (!Number.isFinite(compra) || compra <= 0) {
+    return "precio_compra debe ser un número mayor a 0";
+  }
+
+  if (!Number.isFinite(venta) || venta <= 0) {
+    return "precio_venta debe ser un número mayor a 0";
+  }
+
+  if (!Number.isFinite(inventario) || inventario < 0) {
+    return "stock debe ser un número mayor o igual a 0";
+  }
+
+  return null;
+};
+
 const crearProducto = async (req, res) => {
   try {
     const { nombre, precio_compra, precio_venta, stock } = req.body;
+    const errorValidacion = validarDatosProducto(req.body);
 
-    if (!nombre || !precio_compra || !precio_venta || !stock) {
-      return res.status(400).json({ message: "nombre, precio_compra, precio_venta y stock son requeridos y no pueden ser 0" });
+    if (errorValidacion) {
+      return res.status(400).json({ message: errorValidacion });
     }
 
     const result = await pool.query(
       `INSERT INTO productos (nombre, precio_compra, precio_venta, stock)
        VALUES ($1,$2,$3,$4)
        RETURNING *`,
-      [nombre, precio_compra, precio_venta, stock],
+      [nombre.trim(), precio_compra, precio_venta, stock],
     );
 
     res.status(201).json({
@@ -20,7 +45,7 @@ const crearProducto = async (req, res) => {
       producto: result.rows[0],
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -30,11 +55,11 @@ const obtenerProductos = async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
-const obtenerProducto = async (req, res) => {
+const obtenerProductoPorId = async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -42,9 +67,13 @@ const obtenerProducto = async (req, res) => {
       id,
     ]);
 
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -52,9 +81,10 @@ const actualizarProducto = async (req, res) => {
   try {
     const { id } = req.params;
     const { nombre, precio_compra, precio_venta, stock } = req.body;
+    const errorValidacion = validarDatosProducto(req.body);
 
-    if (!nombre || !precio_compra || !precio_venta || !stock) {
-      return res.status(400).json({ message: "nombre, precio_compra, precio_venta y stock son requeridos y no pueden ser 0" });
+    if (errorValidacion) {
+      return res.status(400).json({ message: errorValidacion });
     }
 
     const result = await pool.query(
@@ -65,15 +95,19 @@ const actualizarProducto = async (req, res) => {
            stock=$4
        WHERE id=$5
        RETURNING *`,
-      [nombre, precio_compra, precio_venta, stock, id],
+      [nombre.trim(), precio_compra, precio_venta, stock, id],
     );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
 
     res.json({
       message: "Producto actualizado",
       producto: result.rows[0],
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -81,20 +115,27 @@ const eliminarProducto = async (req, res) => {
   try {
     const { id } = req.params;
 
-    await pool.query("DELETE FROM productos WHERE id=$1", [id]);
+    const result = await pool.query(
+      "DELETE FROM productos WHERE id=$1 RETURNING id",
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Producto no encontrado" });
+    }
 
     res.json({
       message: "Producto eliminado correctamente",
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
 module.exports = {
   crearProducto,
   obtenerProductos,
-  obtenerProducto,
+  obtenerProductoPorId,
   actualizarProducto,
   eliminarProducto,
 };

@@ -20,14 +20,14 @@ router.get(
 );
 
 router.get(
-  "/id/:id",
+  "/:id",
   verifyToken,
   checkRole([roles.ADMIN, roles.ENTRENADOR]),
   obtenerMembresiaPorId,
 );
 
 router.get(
-  "/cliente/:nombre",
+  "/search/:nombre",
   verifyToken,
   checkRole([roles.ADMIN, roles.ENTRENADOR]),
   buscarPorNombre,

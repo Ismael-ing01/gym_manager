@@ -13,21 +13,21 @@ const {
 router.post(
   "/entrada_dia",
   verifyToken,
-  checkRole([roles.ADMIN, roles.EMPLEADO]),
+  checkRole([roles.ADMIN, roles.ENTRENADOR]),
   registrarEntradaDia,
 );
 
 router.post(
   "/producto",
   verifyToken,
-  checkRole([roles.ADMIN, roles.EMPLEADO]),
+  checkRole([roles.ADMIN, roles.ENTRENADOR]),
   venderProducto,
 );
 
 router.post(
   "/membresia",
   verifyToken,
-  checkRole([roles.ADMIN, roles.EMPLEADO]),
+  checkRole([roles.ADMIN, roles.ENTRENADOR]),
   venderMembresia,
 );
 

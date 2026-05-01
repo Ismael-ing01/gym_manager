@@ -20,7 +20,7 @@ const obtenerMembresias = async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -43,9 +43,13 @@ const obtenerMembresiaPorId = async (req, res) => {
       [id],
     );
 
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Membresía no encontrada" });
+    }
+
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -73,7 +77,7 @@ const buscarPorNombre = async (req, res) => {
 
     res.json(result.rows);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -87,6 +91,13 @@ const actualizarMembresia = async (req, res) => {
       return res
         .status(400)
         .json({ message: "estado es requerido (activa / inactiva)" });
+    }
+
+    const estadosPermitidos = ["activa", "inactiva"];
+    if (!estadosPermitidos.includes(estado)) {
+      return res.status(400).json({
+        message: "estado inválido. Debe ser activa o inactiva",
+      });
     }
 
     const result = await pool.query(
@@ -103,7 +114,7 @@ const actualizarMembresia = async (req, res) => {
 
     res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -111,11 +122,18 @@ const actualizarMembresia = async (req, res) => {
 const eliminarMembresia = async (req, res) => {
   try {
     const { id } = req.params;
-    await pool.query("DELETE FROM membresias WHERE id=$1", [id]);
+    const result = await pool.query(
+      "DELETE FROM membresias WHERE id=$1 RETURNING id",
+      [id],
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Membresía no encontrada" });
+    }
 
     res.json({ message: "Membresía eliminada correctamente" });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 

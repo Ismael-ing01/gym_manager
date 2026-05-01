@@ -1,23 +1,40 @@
 const pool = require("../../config/database");
 
+const crearErrorHttp = (message, statusCode) => {
+  const error = new Error(message);
+  error.statusCode = statusCode;
+  return error;
+};
+
 const registrarEntradaDia = async (req, res) => {
   try {
     const { metodo_pago_id, total, descripcion } = req.body;
 
-    if (!metodo_pago_id || !total) {
-      return res.status(400).json({ message: "metodo_pago_id y total son requeridos y no pueden ser 0" });
+    const metodoPagoId = Number(metodo_pago_id);
+    const totalNumber = Number(total);
+
+    if (!Number.isInteger(metodoPagoId) || metodoPagoId <= 0) {
+      return res
+        .status(400)
+        .json({ message: "metodo_pago_id debe ser un entero mayor a 0" });
+    }
+
+    if (!Number.isFinite(totalNumber) || totalNumber <= 0) {
+      return res
+        .status(400)
+        .json({ message: "total debe ser un número mayor a 0" });
     }
 
     const result = await pool.query(
       `INSERT INTO ventas (metodo_pago_id, tipo_venta, total, descripcion)
        VALUES ($1,'entrada_dia',$2,$3)
        RETURNING *`,
-      [metodo_pago_id, total, descripcion],
+      [metodoPagoId, totalNumber, descripcion],
     );
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: "Error interno del servidor" });
   }
 };
 
@@ -31,6 +48,13 @@ const venderProducto = async (req, res) => {
       return res.status(400).json({ message: "metodo_pago_id y productos (array no vacío) son requeridos" });
     }
 
+    const metodoPagoId = Number(metodo_pago_id);
+    if (!Number.isInteger(metodoPagoId) || metodoPagoId <= 0) {
+      return res
+        .status(400)
+        .json({ message: "metodo_pago_id debe ser un entero mayor a 0" });
+    }
+
     /*
     productos = [
       { producto_id: 1, cantidad: 2 },
@@ -41,61 +65,72 @@ const venderProducto = async (req, res) => {
     await client.query("BEGIN");
 
     let totalVenta = 0;
-
-    const venta = await client.query(
-      `INSERT INTO ventas (metodo_pago_id,tipo_venta,total)
-       VALUES ($1,'producto',0)
-       RETURNING id`,
-      [metodo_pago_id],
-    );
-
-    const venta_id = venta.rows[0].id;
+    const detalles = [];
 
     for (const item of productos) {
+      const productoId = Number(item.producto_id);
+      const cantidad = Number(item.cantidad);
+
+      if (!Number.isInteger(productoId) || productoId <= 0) {
+        throw crearErrorHttp("producto_id inválido en el detalle de venta", 400);
+      }
+
+      if (!Number.isInteger(cantidad) || cantidad <= 0) {
+        throw crearErrorHttp("cantidad debe ser un entero mayor a 0", 400);
+      }
+
       const producto = await client.query(
         "SELECT precio_venta, stock FROM productos WHERE id=$1",
-        [item.producto_id],
+        [productoId],
       );
 
       if (producto.rows.length === 0) {
-        throw new Error("Producto no encontrado");
+        throw crearErrorHttp(`Producto ${productoId} no encontrado`, 404);
       }
 
       const precio = producto.rows[0].precio_venta;
       const stock = producto.rows[0].stock;
 
-      // 🔴 verificar stock
-      if (stock < item.cantidad) {
-        throw new Error(
-          `Stock insuficiente para el producto ID ${item.producto_id}`,
+      if (stock < cantidad) {
+        throw crearErrorHttp(
+          `Stock insuficiente para el producto ID ${productoId}`,
+          409,
         );
       }
 
-      const subtotal = precio * item.cantidad;
-
+      const subtotal = precio * cantidad;
       totalVenta += subtotal;
+      detalles.push({ productoId, cantidad, precio, subtotal });
+    }
 
-      // guardar detalle de venta
+    if (totalVenta <= 0) {
+      throw crearErrorHttp("El total de la venta debe ser mayor a 0", 400);
+    }
+
+    const venta = await client.query(
+      `INSERT INTO ventas (metodo_pago_id,tipo_venta,total)
+       VALUES ($1,'producto',$2)
+       RETURNING id`,
+      [metodoPagoId, totalVenta],
+    );
+
+    const venta_id = venta.rows[0].id;
+
+    for (const det of detalles) {
       await client.query(
         `INSERT INTO detalle_ventas
         (venta_id,producto_id,cantidad,precio_unitario,subtotal)
         VALUES ($1,$2,$3,$4,$5)`,
-        [venta_id, item.producto_id, item.cantidad, precio, subtotal],
+        [venta_id, det.productoId, det.cantidad, det.precio, det.subtotal],
       );
 
-      // 🔵 descontar stock
       await client.query(
         `UPDATE productos
          SET stock = stock - $1
          WHERE id = $2`,
-        [item.cantidad, item.producto_id],
+        [det.cantidad, det.productoId],
       );
     }
-
-    await client.query("UPDATE ventas SET total=$1 WHERE id=$2", [
-      totalVenta,
-      venta_id,
-    ]);
 
     await client.query("COMMIT");
 
@@ -107,7 +142,12 @@ const venderProducto = async (req, res) => {
   } catch (error) {
     await client.query("ROLLBACK");
 
-    res.status(500).json({ error: error.message });
+    const statusCode = error.statusCode || 500;
+    console.error('Error en venderProducto:', error);
+    res.status(statusCode).json({
+      error:
+        statusCode >= 500 ? "Error interno del servidor" : error.message,
+    });
   } finally {
     client.release();
   }
@@ -119,8 +159,28 @@ const venderMembresia = async (req, res) => {
   try {
     const { cliente_id, tipo_membresia_id, metodo_pago_id } = req.body;
 
+    const clienteId = Number(cliente_id);
+    const tipoMembresiaId = Number(tipo_membresia_id);
+    const metodoPagoId = Number(metodo_pago_id);
+
     if (!cliente_id || !tipo_membresia_id || !metodo_pago_id) {
       return res.status(400).json({ message: "cliente_id, tipo_membresia_id y metodo_pago_id son requeridos" });
+    }
+
+    if (!Number.isInteger(clienteId) || clienteId <= 0) {
+      return res.status(400).json({ message: "cliente_id debe ser un entero mayor a 0" });
+    }
+
+    if (!Number.isInteger(tipoMembresiaId) || tipoMembresiaId <= 0) {
+      return res
+        .status(400)
+        .json({ message: "tipo_membresia_id debe ser un entero mayor a 0" });
+    }
+
+    if (!Number.isInteger(metodoPagoId) || metodoPagoId <= 0) {
+      return res
+        .status(400)
+        .json({ message: "metodo_pago_id debe ser un entero mayor a 0" });
     }
 
     await client.query("BEGIN");
@@ -128,11 +188,11 @@ const venderMembresia = async (req, res) => {
     // obtener tipo de membresia
     const tipo = await client.query(
       "SELECT precio,duracion_dias FROM tipos_membresia WHERE id=$1",
-      [tipo_membresia_id],
+      [tipoMembresiaId],
     );
 
     if (tipo.rows.length === 0) {
-      throw new Error("Tipo de membresia no encontrado");
+      throw crearErrorHttp("Tipo de membresía no encontrado", 404);
     }
 
     const precio = tipo.rows[0].precio;
@@ -143,7 +203,7 @@ const venderMembresia = async (req, res) => {
       `INSERT INTO ventas (cliente_id,metodo_pago_id,tipo_venta,total)
        VALUES ($1,$2,'membresia',$3)
        RETURNING id`,
-      [cliente_id, metodo_pago_id, precio],
+      [clienteId, metodoPagoId, precio],
     );
 
     const venta_id = venta.rows[0].id;
@@ -155,7 +215,7 @@ const venderMembresia = async (req, res) => {
        WHERE cliente_id=$1
        ORDER BY fecha_fin DESC
        LIMIT 1`,
-      [cliente_id],
+      [clienteId],
     );
 
     let fecha_inicio;
@@ -179,7 +239,7 @@ const venderMembresia = async (req, res) => {
       `INSERT INTO membresias
       (cliente_id,tipo_membresia_id,fecha_inicio,fecha_fin,venta_id)
       VALUES ($1,$2,$3,$4,$5)`,
-      [cliente_id, tipo_membresia_id, fecha_inicio, fecha_fin, venta_id],
+      [clienteId, tipoMembresiaId, fecha_inicio, fecha_fin, venta_id],
     );
 
     await client.query("COMMIT");
@@ -193,7 +253,11 @@ const venderMembresia = async (req, res) => {
   } catch (error) {
     await client.query("ROLLBACK");
 
-    res.status(500).json({ error: error.message });
+    const statusCode = error.statusCode || 500;
+    res.status(statusCode).json({
+      error:
+        statusCode >= 500 ? "Error interno del servidor" : error.message,
+    });
   } finally {
     client.release();
   }
