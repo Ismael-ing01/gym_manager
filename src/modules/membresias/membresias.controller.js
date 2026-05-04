@@ -1,17 +1,25 @@
 const pool = require("../../config/database");
 
+const syncEstados = async () => {
+  await pool.query(
+    "UPDATE membresias SET estado='inactiva' WHERE fecha_fin < CURRENT_DATE AND estado <> 'inactiva'",
+  );
+};
+
 // VER TODAS LAS MEMBRESIAS
 const obtenerMembresias = async (req, res) => {
   try {
+    await syncEstados();
     if (req.query.page) {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
       const offset = (page - 1) * limit;
 
-      const countResult = await pool.query('SELECT COUNT(*) FROM membresias');
+      const countResult = await pool.query("SELECT COUNT(*) FROM membresias");
       const total = parseInt(countResult.rows[0].count);
 
-      const result = await pool.query(`
+      const result = await pool.query(
+        `
         SELECT 
         m.id,
         c.nombre AS cliente,
@@ -25,13 +33,15 @@ const obtenerMembresias = async (req, res) => {
         JOIN tipos_membresia t ON t.id = m.tipo_membresia_id
         ORDER BY m.id DESC
         LIMIT $1 OFFSET $2
-      `, [limit, offset]);
+      `,
+        [limit, offset],
+      );
 
       return res.json({
         data: result.rows,
         total,
         page,
-        totalPages: Math.ceil(total / limit)
+        totalPages: Math.ceil(total / limit),
       });
     } else {
       const result = await pool.query(`
@@ -89,6 +99,7 @@ const buscarPorNombre = async (req, res) => {
   const { nombre } = req.params;
 
   try {
+    await syncEstados();
     const result = await pool.query(
       `
       SELECT 

@@ -4,7 +4,8 @@
 
 1. Conectate a la base correcta (`gym_manager`).
 2. Ejecuta `00-bootstrap-schema.sql`.
-3. Ejecuta `security-hardening.sql` (opcional, ya viene cubierto por bootstrap, pero se puede reusar).
+3. Ejecuta `01-metodos-pago-solo-efectivo-transferencia.sql` (si quieres limitar a solo dos metodos).
+4. Ejecuta `security-hardening.sql` (opcional, ya viene cubierto por bootstrap, pero se puede reusar).
 
 ## Verificacion rapida
 

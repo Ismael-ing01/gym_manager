@@ -9,10 +9,14 @@ const {
   egresosHoy,
   gananciaHoy,
   ingresosMes,
+  egresosMes,
+  gananciaMes,
   productosMasVendidos,
   membresiasVencidas,
   productosStockBajo,
   dashboard,
+  reporteManual,
+  reporteManualPdf,
 } = require("./reportes.controller");
 
 router.get("/ingresos_hoy", verifyToken, checkRole([roles.ADMIN]), ingresosHoy);
@@ -22,6 +26,10 @@ router.get("/egresos_hoy", verifyToken, checkRole([roles.ADMIN]), egresosHoy);
 router.get("/ganancia_hoy", verifyToken, checkRole([roles.ADMIN]), gananciaHoy);
 
 router.get("/ingresos_mes", verifyToken, checkRole([roles.ADMIN]), ingresosMes);
+
+router.get("/egresos_mes", verifyToken, checkRole([roles.ADMIN]), egresosMes);
+
+router.get("/ganancia_mes", verifyToken, checkRole([roles.ADMIN]), gananciaMes);
 
 router.get(
   "/productos_mas_vendidos",
@@ -49,6 +57,15 @@ router.get(
   verifyToken,
   checkRole([roles.ADMIN, roles.ENTRENADOR]),
   dashboard,
+);
+
+router.post("/manual", verifyToken, checkRole([roles.ADMIN]), reporteManual);
+
+router.post(
+  "/manual/pdf",
+  verifyToken,
+  checkRole([roles.ADMIN]),
+  reporteManualPdf,
 );
 
 module.exports = router;

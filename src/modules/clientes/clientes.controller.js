@@ -5,7 +5,9 @@ const crearCliente = async (req, res) => {
     const { nombre, cedula, telefono, email } = req.body;
 
     if (!nombre || !cedula) {
-      return res.status(400).json({ message: "nombre y cedula son requeridos" });
+      return res
+        .status(400)
+        .json({ message: "nombre y cedula son requeridos" });
     }
 
     const result = await pool.query(
@@ -23,31 +25,39 @@ const crearCliente = async (req, res) => {
 
 const obtenerClientes = async (req, res) => {
   try {
-    if (req.query.page) {
-      const page = parseInt(req.query.page) || 1;
-      const limit = parseInt(req.query.limit) || 10;
-      const offset = (page - 1) * limit;
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const offset = (page - 1) * limit;
+    const search = (req.query.search || "").toString().trim();
 
-      const countResult = await pool.query('SELECT COUNT(*) FROM clientes WHERE estado = true');
-      const total = parseInt(countResult.rows[0].count);
+    const params = [];
+    let whereClause = "WHERE estado = true";
 
-      const result = await pool.query(
-        `SELECT * FROM clientes WHERE estado = true ORDER BY id DESC LIMIT $1 OFFSET $2`,
-        [limit, offset]
-      );
-
-      return res.json({
-        data: result.rows,
-        total,
-        page,
-        totalPages: Math.ceil(total / limit)
-      });
-    } else {
-      const result = await pool.query(
-        `SELECT * FROM clientes WHERE estado = true ORDER BY id DESC`
-      );
-      return res.json(result.rows);
+    if (search) {
+      params.push(`%${search}%`);
+      whereClause += ` AND (nombre ILIKE $${params.length} OR cedula ILIKE $${params.length})`;
     }
+
+    const countResult = await pool.query(
+      `SELECT COUNT(*) FROM clientes ${whereClause}`,
+      params,
+    );
+    const total = parseInt(countResult.rows[0].count);
+
+    params.push(limit);
+    params.push(offset);
+
+    const result = await pool.query(
+      `SELECT * FROM clientes ${whereClause} ORDER BY id DESC LIMIT $${params.length - 1} OFFSET $${params.length}`,
+      params,
+    );
+
+    return res.json({
+      data: result.rows,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+    });
   } catch (error) {
     res.status(500).json({ error: "Error interno del servidor" });
   }
@@ -77,7 +87,9 @@ const actualizarCliente = async (req, res) => {
     const { nombre, cedula, telefono, email } = req.body;
 
     if (!nombre || !cedula) {
-      return res.status(400).json({ message: "nombre y cedula son requeridos" });
+      return res
+        .status(400)
+        .json({ message: "nombre y cedula son requeridos" });
     }
 
     const result = await pool.query(

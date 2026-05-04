@@ -6,6 +6,22 @@ const crearErrorHttp = (message, statusCode) => {
   return error;
 };
 
+const toDateOnly = (date) =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+const parseDateOnly = (value) => {
+  if (!value) return null;
+  const parsed = new Date(`${value}T00:00:00.000`);
+  if (Number.isNaN(parsed.getTime())) return null;
+  return toDateOnly(parsed);
+};
+
+const addDays = (date, days) => {
+  const result = new Date(date);
+  result.setDate(result.getDate() + days);
+  return result;
+};
+
 const registrarEntradaDia = async (req, res) => {
   try {
     const { metodo_pago_id, total, descripcion } = req.body;
@@ -44,8 +60,17 @@ const venderProducto = async (req, res) => {
   try {
     const { metodo_pago_id, productos } = req.body;
 
-    if (!metodo_pago_id || !productos || !Array.isArray(productos) || productos.length === 0) {
-      return res.status(400).json({ message: "metodo_pago_id y productos (array no vacío) son requeridos" });
+    if (
+      !metodo_pago_id ||
+      !productos ||
+      !Array.isArray(productos) ||
+      productos.length === 0
+    ) {
+      return res
+        .status(400)
+        .json({
+          message: "metodo_pago_id y productos (array no vacío) son requeridos",
+        });
     }
 
     const metodoPagoId = Number(metodo_pago_id);
@@ -72,7 +97,10 @@ const venderProducto = async (req, res) => {
       const cantidad = Number(item.cantidad);
 
       if (!Number.isInteger(productoId) || productoId <= 0) {
-        throw crearErrorHttp("producto_id inválido en el detalle de venta", 400);
+        throw crearErrorHttp(
+          "producto_id inválido en el detalle de venta",
+          400,
+        );
       }
 
       if (!Number.isInteger(cantidad) || cantidad <= 0) {
@@ -143,10 +171,9 @@ const venderProducto = async (req, res) => {
     await client.query("ROLLBACK");
 
     const statusCode = error.statusCode || 500;
-    console.error('Error en venderProducto:', error);
+    console.error("Error en venderProducto:", error);
     res.status(statusCode).json({
-      error:
-        statusCode >= 500 ? "Error interno del servidor" : error.message,
+      error: statusCode >= 500 ? "Error interno del servidor" : error.message,
     });
   } finally {
     client.release();
@@ -157,18 +184,31 @@ const venderMembresia = async (req, res) => {
   const client = await pool.connect();
 
   try {
-    const { cliente_id, tipo_membresia_id, metodo_pago_id } = req.body;
+    const {
+      cliente_id,
+      tipo_membresia_id,
+      metodo_pago_id,
+      fecha_inicio,
+      renovar,
+    } = req.body;
 
     const clienteId = Number(cliente_id);
     const tipoMembresiaId = Number(tipo_membresia_id);
     const metodoPagoId = Number(metodo_pago_id);
 
     if (!cliente_id || !tipo_membresia_id || !metodo_pago_id) {
-      return res.status(400).json({ message: "cliente_id, tipo_membresia_id y metodo_pago_id son requeridos" });
+      return res
+        .status(400)
+        .json({
+          message:
+            "cliente_id, tipo_membresia_id y metodo_pago_id son requeridos",
+        });
     }
 
     if (!Number.isInteger(clienteId) || clienteId <= 0) {
-      return res.status(400).json({ message: "cliente_id debe ser un entero mayor a 0" });
+      return res
+        .status(400)
+        .json({ message: "cliente_id debe ser un entero mayor a 0" });
     }
 
     if (!Number.isInteger(tipoMembresiaId) || tipoMembresiaId <= 0) {
@@ -183,9 +223,26 @@ const venderMembresia = async (req, res) => {
         .json({ message: "metodo_pago_id debe ser un entero mayor a 0" });
     }
 
+    const manualStart = parseDateOnly(fecha_inicio);
+    if (fecha_inicio && !manualStart) {
+      return res.status(400).json({ message: "fecha_inicio inválida" });
+    }
+
+    const isRenovacion =
+      renovar === true ||
+      renovar === "true" ||
+      renovar === 1 ||
+      renovar === "1";
+
     await client.query("BEGIN");
 
-    // obtener tipo de membresia
+    await client.query(
+      `UPDATE membresias
+       SET estado='inactiva'
+       WHERE cliente_id=$1 AND fecha_fin < CURRENT_DATE AND estado <> 'inactiva'`,
+      [clienteId],
+    );
+
     const tipo = await client.query(
       "SELECT precio,duracion_dias FROM tipos_membresia WHERE id=$1",
       [tipoMembresiaId],
@@ -198,17 +255,6 @@ const venderMembresia = async (req, res) => {
     const precio = tipo.rows[0].precio;
     const duracion = tipo.rows[0].duracion_dias;
 
-    // registrar venta
-    const venta = await client.query(
-      `INSERT INTO ventas (cliente_id,metodo_pago_id,tipo_venta,total)
-       VALUES ($1,$2,'membresia',$3)
-       RETURNING id`,
-      [clienteId, metodoPagoId, precio],
-    );
-
-    const venta_id = venta.rows[0].id;
-
-    // buscar ultima membresia
     const ultima = await client.query(
       `SELECT fecha_fin
        FROM membresias
@@ -218,28 +264,50 @@ const venderMembresia = async (req, res) => {
       [clienteId],
     );
 
-    let fecha_inicio;
+    const today = toDateOnly(new Date());
+    const lastEnd =
+      ultima.rows.length > 0
+        ? toDateOnly(new Date(ultima.rows[0].fecha_fin))
+        : null;
 
-    if (ultima.rows.length > 0 && ultima.rows[0].fecha_fin > new Date()) {
-      fecha_inicio = ultima.rows[0].fecha_fin;
+    let startDate;
+    if (isRenovacion && lastEnd && lastEnd >= today) {
+      startDate = addDays(lastEnd, 1);
+    } else if (manualStart) {
+      if (manualStart < today) {
+        throw crearErrorHttp("fecha_inicio no puede ser anterior a hoy", 400);
+      }
+      startDate = manualStart;
     } else {
-      fecha_inicio = new Date();
+      startDate = today;
     }
 
-    // calcular fecha fin
+    const venta = await client.query(
+      `INSERT INTO ventas (cliente_id,metodo_pago_id,tipo_venta,total,descripcion)
+       VALUES ($1,$2,'membresia',$3,$4)
+       RETURNING id`,
+      [
+        clienteId,
+        metodoPagoId,
+        precio,
+        isRenovacion ? "Renovacion membresia" : "Venta membresia",
+      ],
+    );
+
+    const venta_id = venta.rows[0].id;
+
     const fechaFin = await client.query(
       `SELECT $1::date + $2 * INTERVAL '1 day' AS fecha_fin`,
-      [fecha_inicio, duracion],
+      [startDate, duracion],
     );
 
     const fecha_fin = fechaFin.rows[0].fecha_fin;
 
-    // crear membresia
     await client.query(
       `INSERT INTO membresias
       (cliente_id,tipo_membresia_id,fecha_inicio,fecha_fin,venta_id)
       VALUES ($1,$2,$3,$4,$5)`,
-      [clienteId, tipoMembresiaId, fecha_inicio, fecha_fin, venta_id],
+      [clienteId, tipoMembresiaId, startDate, fecha_fin, venta_id],
     );
 
     await client.query("COMMIT");
@@ -247,16 +315,17 @@ const venderMembresia = async (req, res) => {
     res.status(201).json({
       message: "Membresia vendida correctamente",
       venta_id,
-      fecha_inicio,
+      fecha_inicio: startDate,
       fecha_fin,
+      renovacion: isRenovacion,
+      inicio_diferido: Boolean(manualStart),
     });
   } catch (error) {
     await client.query("ROLLBACK");
 
     const statusCode = error.statusCode || 500;
     res.status(statusCode).json({
-      error:
-        statusCode >= 500 ? "Error interno del servidor" : error.message,
+      error: statusCode >= 500 ? "Error interno del servidor" : error.message,
     });
   } finally {
     client.release();
@@ -269,10 +338,13 @@ const obtenerVentasHoy = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const offset = (page - 1) * limit;
 
-    const countResult = await pool.query('SELECT COUNT(*) FROM ventas WHERE DATE(fecha) = CURRENT_DATE');
+    const countResult = await pool.query(
+      "SELECT COUNT(*) FROM ventas WHERE DATE(fecha) = CURRENT_DATE",
+    );
     const total = parseInt(countResult.rows[0].count);
 
-    const result = await pool.query(`
+    const result = await pool.query(
+      `
       SELECT 
         v.id,
         v.tipo_venta,
@@ -287,35 +359,43 @@ const obtenerVentasHoy = async (req, res) => {
       WHERE DATE(v.fecha) = CURRENT_DATE
       ORDER BY v.id DESC
       LIMIT $1 OFFSET $2
-    `, [limit, offset]);
+    `,
+      [limit, offset],
+    );
 
     const ventas = result.rows;
 
-    for (let venta of ventas) {
-      if (venta.tipo_venta === 'producto') {
-        const detalles = await pool.query(`
+    for (const venta of ventas) {
+      if (venta.tipo_venta === "producto") {
+        const detalles = await pool.query(
+          `
           SELECT p.nombre, dv.cantidad
           FROM detalle_ventas dv
           JOIN productos p ON p.id = dv.producto_id
           WHERE dv.venta_id = $1
-        `, [venta.id]);
-        
-        venta.detalles = detalles.rows.map(d => d.nombre).join(', ');
-        venta.cantidad = detalles.rows.map(d => d.cantidad).join(', ');
-      } else if (venta.tipo_venta === 'membresia') {
-        const mem = await pool.query(`
+        `,
+          [venta.id],
+        );
+
+        venta.detalles = detalles.rows.map((d) => d.nombre).join(", ");
+        venta.cantidad = detalles.rows.map((d) => d.cantidad).join(", ");
+      } else if (venta.tipo_venta === "membresia") {
+        const mem = await pool.query(
+          `
           SELECT tm.nombre 
           FROM membresias mem
           JOIN tipos_membresia tm ON tm.id = mem.tipo_membresia_id
           WHERE mem.venta_id = $1
-        `, [venta.id]);
+        `,
+          [venta.id],
+        );
         if (mem.rows.length > 0) {
           venta.detalles = mem.rows[0].nombre;
         }
-        venta.cantidad = '1';
-      } else if (venta.tipo_venta === 'entrada_dia') {
-        venta.detalles = venta.descripcion || 'Pase de día';
-        venta.cantidad = '1';
+        venta.cantidad = "1";
+      } else if (venta.tipo_venta === "entrada_dia") {
+        venta.detalles = venta.descripcion || "Pase de día";
+        venta.cantidad = "1";
       }
     }
 
@@ -323,7 +403,7 @@ const obtenerVentasHoy = async (req, res) => {
       data: ventas,
       total,
       page,
-      totalPages: Math.ceil(total / limit)
+      totalPages: Math.ceil(total / limit),
     });
   } catch (error) {
     res.status(500).json({ error: "Error interno del servidor" });
